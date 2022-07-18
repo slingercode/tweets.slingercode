@@ -1,3 +1,5 @@
+import { ChakraProvider } from "@chakra-ui/react";
+import { withEmotionCache } from "@emotion/react";
 import type { MetaFunction } from "@remix-run/node";
 import {
   Links,
@@ -8,6 +10,11 @@ import {
   ScrollRestoration,
   useCatch,
 } from "@remix-run/react";
+import { useContext, useEffect } from "react";
+
+import CommonCatchBoundary from "~/components/catch-boundary.component";
+import { ClientStyleContext, ServerStyleContext } from "~/context";
+import theme from "~/theme";
 
 export const meta: MetaFunction = () => ({
   charset: "utf-8",
@@ -16,34 +23,62 @@ export const meta: MetaFunction = () => ({
   description: "A personal collection of favorites tweets.",
 });
 
-const Document: React.FC = ({ children }) => {
-  return (
-    <html lang="en">
-      <head>
-        <Meta />
-        <Links />
-      </head>
-
-      <body>
-        <main>{children}</main>
-
-        <ScrollRestoration />
-        <Scripts />
-        <LiveReload />
-      </body>
-    </html>
-  );
+type DocumentProps = {
+  children: React.ReactNode;
 };
+
+const Document = withEmotionCache(
+  ({ children }: DocumentProps, emotionCache) => {
+    const serverStyleData = useContext(ServerStyleContext);
+    const clientStyleData = useContext(ClientStyleContext);
+
+    // Only executed on client
+    useEffect(() => {
+      // re-link sheet container
+      emotionCache.sheet.container = document.head;
+      // re-inject tags
+      const tags = emotionCache.sheet.tags;
+      emotionCache.sheet.flush();
+      tags.forEach((tag) => {
+        (emotionCache.sheet as any)._insertTag(tag);
+      });
+      // reset cache to reapply global styles
+      clientStyleData?.reset();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+      <html lang="en">
+        <head>
+          <Meta />
+          <Links />
+          {serverStyleData?.map(({ key, ids, css }) => (
+            <style
+              key={key}
+              data-emotion={`${key} ${ids.join(" ")}`}
+              dangerouslySetInnerHTML={{ __html: css }}
+            />
+          ))}
+        </head>
+
+        <body>
+          <ChakraProvider theme={theme}>{children}</ChakraProvider>
+
+          <ScrollRestoration />
+          <Scripts />
+          <LiveReload />
+        </body>
+      </html>
+    );
+  }
+);
 
 export function CatchBoundary() {
   const caught = useCatch();
 
   return (
     <Document>
-      <div>
-        <h1>Caught</h1>
-        <p>{JSON.stringify(caught)}</p>
-      </div>
+      <CommonCatchBoundary caught={caught} />
     </Document>
   );
 }

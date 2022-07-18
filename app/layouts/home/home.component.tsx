@@ -1,15 +1,17 @@
+import { Stack } from "@chakra-ui/react";
 import { useLoaderData } from "@remix-run/react";
 
+import Tweet from "~/components/tweet.component";
 import type { LoaderData } from "./home.server";
 
 export default function Index() {
   const data = useLoaderData<LoaderData>();
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.4" }}>
+    <Stack spacing={4} paddingX={[4, 56]} paddingY={[4, 14]}>
       {data.tweets.map((tweet) => (
-        <p key={tweet.id}>{tweet.text}</p>
+        <Tweet key={tweet.id} tweet={tweet} />
       ))}
-    </div>
+    </Stack>
   );
 }
